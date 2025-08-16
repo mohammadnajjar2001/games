@@ -49,6 +49,7 @@
       border-radius: 20px;
       box-shadow: 0 0 20px #ff99cc;
       display: none;
+      touch-action: none; /* مهم لتعطيل التمرير الافتراضي عند السحب */
     }
 
     .snake {
@@ -99,7 +100,6 @@
   <button id="backBtn" onclick="backToMenu()">🔙 رجوع للقائمة</button>
 
   <script>
-
     const board = document.getElementById("gameBoard");
     const scoreElement = document.getElementById("score");
     const backBtn = document.getElementById("backBtn");
@@ -211,6 +211,7 @@
       document.getElementById("menu").style.display = "block";
     }
 
+    // التحكم عبر لوحة المفاتيح
     document.addEventListener("keydown", e => {
       if (e.key === "ArrowUp" && dy === 0) {
         dx = 0; dy = -1;
@@ -222,8 +223,44 @@
         dx = 1; dy = 0;
       }
     });
+
+    // التحكم عبر اللمس (Swipe)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    const minSwipeDistance = 30; // الحد الأدنى للمسافة لتحديد السحب
+
+    board.addEventListener("touchstart", e => {
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    });
+
+    board.addEventListener("touchend", e => {
+      const touch = e.changedTouches[0];
+      touchEndX = touch.clientX;
+      touchEndY = touch.clientY;
+
+      const dxSwipe = touchEndX - touchStartX;
+      const dySwipe = touchEndY - touchStartY;
+
+      if (Math.abs(dxSwipe) > Math.abs(dySwipe)) {
+        // أفقياً
+        if (dxSwipe > minSwipeDistance && dx === 0) { // سحب لليمين
+          dx = 1; dy = 0;
+        } else if (dxSwipe < -minSwipeDistance && dx === 0) { // سحب لليسار
+          dx = -1; dy = 0;
+        }
+      } else {
+        // عمودياً
+        if (dySwipe > minSwipeDistance && dy === 0) { // سحب للأسفل
+          dx = 0; dy = 1;
+        } else if (dySwipe < -minSwipeDistance && dy === 0) { // سحب للأعلى
+          dx = 0; dy = -1;
+        }
+      }
+    });
   </script>
 </body>
 </html>
-
-
