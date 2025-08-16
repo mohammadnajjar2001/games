@@ -88,7 +88,7 @@
   <!-- قائمة اختيار النمط -->
   <div id="menu">
     <h2>اختر النمط</h2>
-    <button onclick="startGame('classic')">🎀 الوضع الكلاسيكي</button>
+    <button onclick="startGame('classic')">🎀 الوضععع الكلاسيكي</button>
     <button onclick="startGame('challenge')">🎯 وضع التحدي</button>
     <button onclick="startGame('fun')">🌸 الوضع المرح</button>
   </div>
@@ -99,6 +99,38 @@
   <button id="backBtn" onclick="backToMenu()">🔙 رجوع للقائمة</button>
 
   <script>
+    // متغيرات لتخزين نقطة البداية والنهاية
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener("touchstart", function (e) {
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+}, false);
+
+document.addEventListener("touchend", function (e) {
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - touchStartX;
+  const dy = touch.clientY - touchStartY;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // الحركة أفقية
+    if (dx > 0 && direction !== "LEFT") {
+      direction = "RIGHT";
+    } else if (dx < 0 && direction !== "RIGHT") {
+      direction = "LEFT";
+    }
+  } else {
+    // الحركة عمودية
+    if (dy > 0 && direction !== "UP") {
+      direction = "DOWN";
+    } else if (dy < 0 && direction !== "DOWN") {
+      direction = "UP";
+    }
+  }
+}, false);
+
     const board = document.getElementById("gameBoard");
     const scoreElement = document.getElementById("score");
     const backBtn = document.getElementById("backBtn");
@@ -224,3 +256,4 @@
   </script>
 </body>
 </html>
+
