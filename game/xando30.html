@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>X & O 30x30 — خمس متتالية</title>
+<style>
+  :root{
+    --bg:#f7f7fb;
+    --board-bg:#ffffff;
+    --grid:#cfd3dc;
+    --x:#2563eb;    /* أزرق */
+    --o:#ef4444;    /* أحمر */
+    --text:#111827;
+    --accent:#8b5cf6;
+  }
+  body{
+    margin:0; background:var(--bg); font-family:system-ui, Arial, sans-serif; color:var(--text);
+    display:flex; min-height:100vh; align-items:center; justify-content:center;
+  }
+  .wrap{
+    text-align:center;
+  }
+  h1{font-size:clamp(20px, 2.6vw, 30px); margin:0 0 15px;}
+  .panel{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:12px;
+  }
+  .panel > *{font-size:15px}
+  .status{
+    padding:.7rem 1rem; background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.05);
+    font-size:16px;
+  }
+  button{
+    padding:.7rem 1.2rem; border:0; border-radius:12px; background:var(--accent); color:#fff; cursor:pointer;
+    box-shadow:0 6px 16px rgba(139,92,246,.25); font-size:15px;
+  }
+  button:active{transform:translateY(1px)}
+  .board{
+    background:var(--board-bg); border-radius:16px; padding:10px; box-shadow:0 10px 30px rgba(0,0,0,.08);
+    display:inline-block;
+  }
+  canvas{ display:block; margin:auto; max-width:100%; height:auto; border-radius:8px; }
+  .legend{
+    font-size:14px; opacity:.8; margin-top:10px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>لعبة X و O — لوحة 30×30 والفوز بخمس متتالية</h1>
+
+    <div class="panel">
+      <div class="status" id="status">الدور: <b style="color:var(--x)">X</b></div>
+      <button id="reset">إعادة البداية</button>
+    </div>
+
+    <div class="board">
+      <canvas id="game" width="720" height="720"></canvas>
+    </div>
+    <div class="legend">انقر على خلية فارغة لوضع علامتك. X يبدأ دائمًا. الفوز عند 5 رموز متتالية.</div>
+  </div>
+
+<script>
+(() => {
+  // إعدادات اللوحة
+  const N = 30;              // عدد الخلايا
+  const CELL = 24;           // حجم الخلية (أكبر عشان تكون أوضح)
+  const SIZE = N * CELL;
+  const LINE_W = 2;          // سمك خطوط الشبكة (زودناه)
+  const PADDING = 4;         // فراغ داخل الخلية
+
+  // ألوان
+  const COLORS = {
+    grid: getCSS('--grid'),
+    x: getCSS('--x'),
+    o: getCSS('--o'),
+    win: getCSS('--accent'),
+    text: getCSS('--text')
+  };
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const resetBtn = document.getElementById('reset');
+
+  let board, current, ended, moves, winLine;
+
+  function init() {
+    board = Array.from({length: N}, () => new Int8Array(N));
+    current = 1; ended = false; moves = 0; winLine = null;
+    setStatusTurn();
+    drawAll();
+  }
+
+  function setStatusTurn() {
+    const who = current === 1 ? 'X' : 'O';
+    const color = current === 1 ? 'var(--x)' : 'var(--o)';
+    statusEl.innerHTML = `الدور: <b style="color:${color}">${who}</b>`;
+  }
+
+  function setStatusWin(player) {
+    const who = player === 1 ? 'X' : 'O';
+    const color = player === 1 ? 'var(--x)' : 'var(--o)';
+    statusEl.innerHTML = `🎉 الفائز: <b style="color:${color}">${who}</b>`;
+  }
+
+  function setStatusDraw() {
+    statusEl.textContent = 'تعادل — اضغط "إعادة البداية" للعب مجددًا';
+  }
+
+  function drawGrid() {
+    ctx.clearRect(0,0,SIZE,SIZE);
+    ctx.lineWidth = LINE_W;
+    ctx.strokeStyle = COLORS.grid;
+    ctx.beginPath();
+    for (let x = 0; x <= N; x++) {
+      const px = x * CELL + 0.5;
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, SIZE);
+    }
+    for (let y = 0; y <= N; y++) {
+      const py = y * CELL + 0.5;
+      ctx.moveTo(0, py);
+      ctx.lineTo(SIZE, py);
+    }
+    ctx.stroke();
+  }
+
+  function drawMark(x, y, val) {
+    const cx = x * CELL;
+    const cy = y * CELL;
+    if (val === 1) {
+      ctx.strokeStyle = COLORS.x;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx+PADDING, cy+PADDING);
+      ctx.lineTo(cx+CELL-PADDING, cy+CELL-PADDING);
+      ctx.moveTo(cx+CELL-PADDING, cy+PADDING);
+      ctx.lineTo(cx+PADDING, cy+CELL-PADDING);
+      ctx.stroke();
+    } else if (val === -1) {
+      ctx.strokeStyle = COLORS.o;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx+CELL/2, cy+CELL/2, CELL/2-PADDING, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  function drawAll() {
+    drawGrid();
+    for (let y=0; y<N; y++) for (let x=0; x<N; x++) {
+      if (board[y][x]) drawMark(x,y,board[y][x]);
+    }
+    if (winLine) drawWinLine(winLine);
+  }
+
+  function drawWinLine({x1,y1,x2,y2}) {
+    ctx.strokeStyle = COLORS.win;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x1*CELL+CELL/2, y1*CELL+CELL/2);
+    ctx.lineTo(x2*CELL+CELL/2, y2*CELL+CELL/2);
+    ctx.stroke();
+  }
+
+  function getCellFromEvent(evt) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mx = (evt.clientX - rect.left) * scaleX;
+    const my = (evt.clientY - rect.top) * scaleY;
+    const x = Math.floor(mx / CELL);
+    const y = Math.floor(my / CELL);
+    if (x<0||x>=N||y<0||y>=N) return null;
+    return {x,y};
+  }
+
+  function checkWin(x,y,target=5) {
+    const who = board[y][x];
+    if (!who) return false;
+    const dirs=[{dx:1,dy:0},{dx:0,dy:1},{dx:1,dy:1},{dx:1,dy:-1}];
+    for (const {dx,dy} of dirs){
+      let count=1,minX=x,minY=y,maxX=x,maxY=y;
+      let i=1;while(x+dx*i<N && y+dy*i<N && y+dy*i>=0 && board[y+dy*i][x+dx*i]===who){count++;maxX=x+dx*i;maxY=y+dy*i;i++}
+      i=1;while(x-dx*i>=0 && y-dy*i>=0 && y-dy*i<N && board[y-dy*i][x-dx*i]===who){count++;minX=x-dx*i;minY=y-dy*i;i++}
+      if(count>=target){winLine={x1:minX,y1:minY,x2:maxX,y2:maxY};return true;}
+    }
+    return false;
+  }
+
+  canvas.addEventListener('click',e=>{
+    if(ended) return;
+    const c=getCellFromEvent(e); if(!c) return;
+    if(board[c.y][c.x]!==0) return;
+    board[c.y][c.x]=current; moves++;
+    drawMark(c.x,c.y,current);
+    if(checkWin(c.x,c.y,5)){ended=true;drawAll();setStatusWin(current);return;}
+    if(moves===N*N){ended=true;setStatusDraw();return;}
+    current*=-1; setStatusTurn();
+  });
+
+  resetBtn.addEventListener('click',init);
+
+  function getCSS(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();}
+  init();
+})();
+</script>
+</body>
+</html>
