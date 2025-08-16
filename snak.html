@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>لعبة Snake البناتية 💖</title>
+  <style>
+    body {
+      background: linear-gradient(to bottom, #ffe6f2, #ffccff);
+      font-family: "Comic Sans MS", cursive, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      color: #d63384;
+      margin: 20px 0;
+      font-size: 2em;
+    }
+
+    #menu {
+      margin-top: 40px;
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #ff66b2;
+      color: white;
+      box-shadow: 0 0 10px #ff99cc;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #ff3385;
+    }
+
+    #gameBoard {
+      margin: 20px auto;
+      background: #fff0f5;
+      border: 5px solid #ff99cc;
+      width: 400px;
+      height: 400px;
+      position: relative;
+      border-radius: 20px;
+      box-shadow: 0 0 20px #ff99cc;
+      display: none;
+    }
+
+    .snake {
+      width: 20px;
+      height: 20px;
+      background: #ff66b2;
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 0 5px #ff3399;
+    }
+
+    .food {
+      width: 20px;
+      height: 20px;
+      background: #ffcc00;
+      border-radius: 50%;
+      position: absolute;
+      box-shadow: 0 0 5px #ff9933;
+    }
+
+    #score {
+      margin-top: 15px;
+      font-size: 1.5em;
+      color: #cc0066;
+      display: none;
+    }
+
+    #backBtn {
+      display: none;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐍 لعبة Snake البناتية 💕</h1>
+
+  <!-- قائمة اختيار النمط -->
+  <div id="menu">
+    <h2>اختر النمط</h2>
+    <button onclick="startGame('classic')">🎀 الوضع الكلاسيكي</button>
+    <button onclick="startGame('challenge')">🎯 وضع التحدي</button>
+    <button onclick="startGame('fun')">🌸 الوضع المرح</button>
+  </div>
+
+  <!-- ساحة اللعبة -->
+  <div id="gameBoard"></div>
+  <div id="score">النقاط: 0</div>
+  <button id="backBtn" onclick="backToMenu()">🔙 رجوع للقائمة</button>
+
+  <script>
+    const board = document.getElementById("gameBoard");
+    const scoreElement = document.getElementById("score");
+    const backBtn = document.getElementById("backBtn");
+    const boardSize = 20; 
+    const boardWidth = 400 / boardSize;
+    const boardHeight = 400 / boardSize;
+
+    let snake, food, dx, dy, score, intervalTime, gameInterval, gameMode;
+
+    function draw() {
+      board.innerHTML = "";
+
+      snake.forEach(segment => {
+        const snakeElement = document.createElement("div");
+        snakeElement.style.left = segment.x * boardSize + "px";
+        snakeElement.style.top = segment.y * boardSize + "px";
+        snakeElement.classList.add("snake");
+        board.appendChild(snakeElement);
+      });
+
+      const foodElement = document.createElement("div");
+      foodElement.style.left = food.x * boardSize + "px";
+      foodElement.style.top = food.y * boardSize + "px";
+      foodElement.classList.add("food");
+      board.appendChild(foodElement);
+    }
+
+    function update() {
+      let head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+      if (gameMode === "classic" || gameMode === "fun") {
+        // الالتفاف من الحواف
+        if (head.x < 0) head.x = boardWidth - 1;
+        if (head.x >= boardWidth) head.x = 0;
+        if (head.y < 0) head.y = boardHeight - 1;
+        if (head.y >= boardHeight) head.y = 0;
+      } else if (gameMode === "challenge") {
+        // الحواف مميتة
+        if (head.x < 0 || head.x >= boardWidth || head.y < 0 || head.y >= boardHeight) {
+          resetGame();
+          return;
+        }
+      }
+
+      // الاصطدام بنفسها
+      for (let i = 1; i < snake.length; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
+          if (gameMode === "classic" || gameMode === "challenge") {
+            resetGame();
+            return;
+          }
+          // في الوضع المرح → تجاهل
+        }
+      }
+
+      snake.unshift(head);
+
+      // أكل الطعام
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        scoreElement.textContent = "النقاط: " + score;
+        food = {
+          x: Math.floor(Math.random() * boardWidth),
+          y: Math.floor(Math.random() * boardHeight)
+        };
+      } else {
+        snake.pop();
+      }
+    }
+
+    function resetGame() {
+      snake = [{ x: 5, y: 5 }];
+      dx = 1;
+      dy = 0;
+      score = 0;
+      scoreElement.textContent = "النقاط: 0";
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+    }
+
+    function startGame(mode) {
+      gameMode = mode;
+      document.getElementById("menu").style.display = "none";
+      board.style.display = "block";
+      scoreElement.style.display = "block";
+      backBtn.style.display = "inline-block";
+
+      snake = [{ x: 5, y: 5 }];
+      food = { x: 10, y: 10 };
+      dx = 1; dy = 0;
+      score = 0;
+
+      if (mode === "classic") intervalTime = 300;
+      if (mode === "challenge") intervalTime = 250;
+      if (mode === "fun") intervalTime = 350;
+
+      clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, intervalTime);
+    }
+
+    function backToMenu() {
+      clearInterval(gameInterval);
+      board.style.display = "none";
+      scoreElement.style.display = "none";
+      backBtn.style.display = "none";
+      document.getElementById("menu").style.display = "block";
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp" && dy === 0) {
+        dx = 0; dy = -1;
+      } else if (e.key === "ArrowDown" && dy === 0) {
+        dx = 0; dy = 1;
+      } else if (e.key === "ArrowLeft" && dx === 0) {
+        dx = -1; dy = 0;
+      } else if (e.key === "ArrowRight" && dx === 0) {
+        dx = 1; dy = 0;
+      }
+    });
+  </script>
+</body>
+</html>
